@@ -13,24 +13,34 @@ const HEIGHT : usize = 512;
 const WIDTH : usize = 512;
 
 fn create_test_image(image: &mut Vec<Vec<Float3>>, triangles : &Vec<Triangle2D>) -> () {
-
-
-    for (y,row)  in image.iter_mut().enumerate() {
+    // Clear the image with black color
+    for row in image.iter_mut() {
+        for pixel in row.iter_mut() {
+            *pixel = Float3::new(0.0, 0.0, 0.0);
+        }
+    }
+    
+    for triangle in triangles.iter() {
+        let min_x = triangle.a.x.min(triangle.b.x).min(triangle.c.x);
+        let max_x = triangle.a.x.max(triangle.b.x).max(triangle.c.x);
+        let min_y = triangle.a.y.min(triangle.b.y).min(triangle.c.y);
+        let max_y = triangle.a.y.max(triangle.b.y).max(triangle.c.y);
         
-        for (x, pixel) in row.iter_mut().enumerate() {
-            pixel.x = 0.0;
-            pixel.y = 0.0;
-            pixel.z = 0.0;
-            
-            let p = Float2::new(x as f32, y as f32);
-            for triangle in triangles.iter() {
+        let block_start_x = min_x.floor().clamp(0.0, WIDTH as f32 - 1.0) as usize;
+        let block_end_x = max_x.ceil().clamp(0.0, WIDTH as f32 - 1.0) as usize;
+        let block_start_y = min_y.floor().clamp(0.0, HEIGHT as f32 - 1.0) as usize;
+        let block_end_y = max_y.ceil().clamp(0.0, HEIGHT as f32 - 1.0) as usize;
+
+        for y in block_start_y..=block_end_y {
+            for x in block_start_x..=block_end_x {
+                let p = Float2::new(x as f32, y as f32);
                 if triangle.contains_point(p) {
-                    *pixel = triangle.color;
-                    break; // Stop checking other triangles once we find a match
+                    image[y][x] = triangle.color;
                 }
             }
         }
     }
+    
 }
 
 fn update_triangles(triangles: &mut Vec<Triangle2D>, velocities: &mut Vec<Float2>) {
@@ -61,7 +71,7 @@ fn update_triangles(triangles: &mut Vec<Triangle2D>, velocities: &mut Vec<Float2
 fn main() {
     const TRIANGLE_COUNT: usize = 250;
     const FPS : i32 = 30;
-    const VIDEO_DURATION : i32 = 5; // seconds
+    const VIDEO_DURATION : i32 = 60; // seconds
     const FRAME_COUNT : i32 = FPS * VIDEO_DURATION;
     let mut triangles : Vec<Triangle2D> = vec![];
     let mut velocities : Vec<Float2> = vec![];

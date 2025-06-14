@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{BufWriter, Write};
 
 use crate::float3::{Float3};
 
@@ -13,7 +13,7 @@ pub fn write_image_to_file(image : &Vec<Vec<Float3>>, filename: &str) -> Result<
     let height : usize = image.len();
 
     // Open the file in write mode
-    let mut file = std::fs::File::create(filename)?;
+    let mut file = BufWriter::new(std::fs::File::create(filename)?);
     
     // Write BMP header
     file.write("BM".as_bytes())?;
