@@ -38,5 +38,9 @@ impl Float3 {
             z: rng.random_range(0f32..depth),
         }
     }
+
+    pub fn zero() -> Self {
+        Self::new(0.0, 0.0, 0.0)
+    }
     
 }

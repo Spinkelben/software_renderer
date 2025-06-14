@@ -3,11 +3,15 @@ mod float3;
 mod bitmap;
 mod math;
 mod triangle;
+mod obj;
+mod render;
 use std::time::{Instant, SystemTime};
 
 use triangle::Triangle2D;
 use float2::Float2;
 use float3::Float3;
+
+use crate::render::Model;
 
 const HEIGHT : usize = 512;
 const WIDTH : usize = 512;
@@ -67,8 +71,8 @@ fn update_triangles(triangles: &mut Vec<Triangle2D>, velocities: &mut Vec<Float2
     }
 }
 
-
-fn main() {
+#[allow(unused)]
+fn crazy_triangles() {
     const TRIANGLE_COUNT: usize = 250;
     const FPS : i32 = 30;
     const VIDEO_DURATION : i32 = 60; // seconds
@@ -106,5 +110,36 @@ fn main() {
     let total_elapsed = start.elapsed();
     println!("All frames processed in {:.2?}.", total_elapsed);
     println!("Images saved to directory: {}", out_dir);
+}
+
+fn main() {
+    //crazy_triangles();
+    use std::env;
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <obj_file_path>", args[0]);
+        return;
+    }
+
+    let obj_file_path = &args[1];
+    let obj = obj::Obj::read_from_file(obj_file_path).expect("Failed to read OBJ file");
+    println!("OBJ file loaded successfully with {} vertices, {} texture coordinates, {} normals, and {} faces.", 
+             obj.vertices.len(), obj.texture_coordinates.len(), obj.normals.len(), obj.faces.len());
+
+    let mut model = Model::new();
+    for face in obj.faces.iter() {
+        let t = triangle::Triangle3D::create_triangles_from_face(&obj, face);
+        for _ in 0..t.len() {
+            model.colors.push(float3::Float3::random()); 
+        }
+
+        model.triangles.extend(t);
+    }
+
+    let out_dir = format!("out-{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
+    let mut render_target = render::RenderTarget::new(WIDTH, HEIGHT);
+    render::render(&model, &mut render_target);
+    bitmap::write_image_to_file(&render_target.pixels, &format!("{}/rendered_image.bmp", out_dir)).expect("Failed to write rendered image to file");
+
 }
 
