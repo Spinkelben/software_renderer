@@ -31,7 +31,7 @@ impl Triangle2D {
         let bc = point_on_right_side_of_line(self.b, self.c, p);
         let ca = point_on_right_side_of_line(self.c, self.a, p);
         
-        ab == bc && bc == ca
+        ab && bc && ca
     }
 
     pub fn set_color(&mut self, color: Float3) {

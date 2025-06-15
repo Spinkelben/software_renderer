@@ -5,6 +5,7 @@ mod math;
 mod triangle;
 mod obj;
 mod render;
+mod transform;
 use std::time::{Instant, SystemTime};
 
 use triangle::Triangle2D;
@@ -129,17 +130,31 @@ fn main() {
     let mut model = Model::new();
     for face in obj.faces.iter() {
         let t = triangle::Triangle3D::create_triangles_from_face(&obj, face);
-        for _ in 0..t.len() {
-            model.colors.push(float3::Float3::random()); 
+        for triangle in t.iter() {
+            model.add_triangle(*triangle, Float3::random());
         }
-
-        model.triangles.extend(t);
     }
 
     let out_dir = format!("out-{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
     let mut render_target = render::RenderTarget::new(WIDTH, HEIGHT);
-    render::render(&model, &mut render_target);
-    bitmap::write_image_to_file(&render_target.pixels, &format!("{}/rendered_image.bmp", out_dir)).expect("Failed to write rendered image to file");
+    const FPS : i32 = 30;
+    const VIDEO_DURATION : i32 = 30; // seconds
+    const FRAME_COUNT : i32 = FPS * VIDEO_DURATION;
+    let start = Instant::now();
+    for frame in 0..FRAME_COUNT {
+        let now = Instant::now();
+        render_target.clear();
+        model.transform.yaw += 0.02; // Rotate the model slightly each frame
+        render::render(&model, &mut render_target);
+        bitmap::write_image_to_file(&render_target.pixels, &format!("{}/frame_{:04}.bmp", out_dir, frame)).expect("Failed to write image to file");
+        let elapsed = now.elapsed();
+        let percent_complete = (frame as f32 / FRAME_COUNT as f32) * 100.0;
+        let estimated_time = elapsed * (FRAME_COUNT - frame) as u32;
+        println!("Frame {} processed in {:.2?}. {} %. Remaining: {:.2?}", frame, elapsed, percent_complete, estimated_time);
+    }
 
+    let total_elapsed = start.elapsed();
+    println!("All frames processed in {:.2?}.", total_elapsed);
+    println!("Images saved to directory: {}", out_dir);
 }
 

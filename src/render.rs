@@ -1,4 +1,4 @@
-use crate::{float2::Float2, float3::Float3, triangle::{Triangle2D, Triangle3D}};
+use crate::{float2::Float2, float3::Float3, transform::{self, Transform}, triangle::{Triangle2D, Triangle3D}};
 
 
 pub struct RenderTarget {
@@ -35,6 +35,7 @@ impl RenderTarget {
 pub struct Model {
     pub triangles: Vec<Triangle3D>,
     pub colors: Vec<Float3>,
+    pub transform: Transform,
 }
 
 impl Model {
@@ -42,6 +43,7 @@ impl Model {
         Model {
             triangles: Vec::new(),
             colors: Vec::new(),
+            transform: Transform { yaw: 0.0 }
         }
     }
 
@@ -58,9 +60,9 @@ pub fn render(model: &Model, target: &mut RenderTarget) {
     for (i, triangle) in model.triangles.iter().enumerate() {
         let color = model.colors[i];
         
-        let a_screen = vertex_to_screen_space(&triangle.a, target);
-        let b_screen = vertex_to_screen_space(&triangle.b, target);
-        let c_screen = vertex_to_screen_space(&triangle.c, target);
+        let a_screen = vertex_to_screen_space(&triangle.a, target, &model.transform);
+        let b_screen = vertex_to_screen_space(&triangle.b, target, &model.transform);
+        let c_screen = vertex_to_screen_space(&triangle.c, target, &model.transform);
         let triangle = Triangle2D {
             a: a_screen,
             b: b_screen,
@@ -89,11 +91,13 @@ pub fn render(model: &Model, target: &mut RenderTarget) {
     }
 }
 
-fn vertex_to_screen_space(vertex : &Float3, target: &RenderTarget) -> Float2 {
+fn vertex_to_screen_space(vertex : &Float3, target: &RenderTarget, transform: &Transform) -> Float2 {
+    let vertex_world = transform.to_world_point(vertex);
+    
     let screen_height_world : f32 = 5.0;
     let pixels_per_world_unit = target.height as f32 / screen_height_world;
 
-    let pixel_offset = Float2::new(vertex.x, vertex.y) * pixels_per_world_unit;
+    let pixel_offset = Float2::new(vertex_world.x, vertex_world.y) * pixels_per_world_unit;
     target.size() / 2.0 + pixel_offset
 }
     

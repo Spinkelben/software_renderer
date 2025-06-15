@@ -1,3 +1,5 @@
+use std::ops::{Add, Mul};
+
 use rand::Rng;
 
 
@@ -43,4 +45,40 @@ impl Float3 {
         Self::new(0.0, 0.0, 0.0)
     }
     
+}
+
+impl Mul<f32> for Float3 {
+    type Output = Self;
+
+    fn mul(self, scalar: f32) -> Self::Output {
+        Float3 {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+        }
+    }
+}
+
+impl Mul<Float3> for f32 {
+    type Output = Float3;
+
+    fn mul(self, vec: Float3) -> Self::Output {
+        Float3 {
+            x: self * vec.x,
+            y: self * vec.y,
+            z: self * vec.z,
+        }
+    }
+}
+
+impl Add for Float3 {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        Float3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }    
 }
