@@ -1,7 +1,6 @@
 mod float2;
 mod float3;
 mod bitmap;
-mod math;
 mod triangle;
 mod obj;
 mod render;
@@ -39,7 +38,8 @@ fn create_test_image(image: &mut Vec<Vec<Float3>>, triangles : &Vec<Triangle2D>)
         for y in block_start_y..=block_end_y {
             for x in block_start_x..=block_end_x {
                 let p = Float2::new(x as f32, y as f32);
-                if triangle.contains_point(p) {
+                let (in_triangle, _) = triangle.contains_point(p);
+                if in_triangle {
                     image[y][x] = triangle.color;
                 }
             }
@@ -129,11 +129,14 @@ fn main() {
 
     let mut model = Model::new();
     for face in obj.faces.iter() {
-        let t = triangle::Triangle3D::create_triangles_from_face(&obj, face);
-        for triangle in t.iter() {
-            model.add_triangle(*triangle, Float3::random());
+        let mut t = triangle::Triangle3D::create_triangles_from_face(&obj, face);
+        for triangle in t.iter_mut() {
+            triangle.set_color(Float3::random());
+            model.add_triangle(*triangle);
         }
     }
+
+    model.transform.position.z = 5.0; // Move the model back in the Z direction
 
     let out_dir = format!("out-{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
     let mut render_target = render::RenderTarget::new(WIDTH, HEIGHT);
@@ -141,10 +144,31 @@ fn main() {
     const VIDEO_DURATION : i32 = 30; // seconds
     const FRAME_COUNT : i32 = FPS * VIDEO_DURATION;
     let start = Instant::now();
+
+    let rotation_list = vec![
+        ((0,4), (0.04, 0.0)),
+        ((4,5), (0.0, 0.0)),
+        ((5,9), (0.0, 0.04)),
+        ((9, 10), (0.0, 0.0)),
+        ((10, 13), (0.06, 0.0)),
+        ((13, 17), (0.0, 0.06)),
+        ((17, 18), (0.0, 0.0)),
+        ((18, 20), (0.04, 0.0)),
+        ((20, 23), (0.0, 0.04)),
+        ((23, 25), (0.04, 0.0)),
+        ((25, 500), (0.0, 0.1))];
     for frame in 0..FRAME_COUNT {
         let now = Instant::now();
         render_target.clear();
-        model.transform.yaw += 0.02; // Rotate the model slightly each frame
+        let (rotation_yaw, rotation_pitch) = rotation_list.iter()
+            .find(|&&((start, end), _)| {
+                frame / FPS >= start && frame / FPS < end
+            })
+            .map(|&(_, rotation)| rotation)
+            .unwrap_or((0.0, 0.0)); 
+
+        model.transform.yaw += rotation_yaw; 
+        model.transform.pitch += rotation_pitch; 
         render::render(&model, &mut render_target);
         bitmap::write_image_to_file(&render_target.pixels, &format!("{}/frame_{:04}.bmp", out_dir, frame)).expect("Failed to write image to file");
         let elapsed = now.elapsed();

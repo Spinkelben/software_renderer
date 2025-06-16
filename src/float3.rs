@@ -44,6 +44,10 @@ impl Float3 {
     pub fn zero() -> Self {
         Self::new(0.0, 0.0, 0.0)
     }
+
+    pub fn dot(&self, other: &Self) -> f32 {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
     
 }
 
@@ -69,6 +73,18 @@ impl Mul<Float3> for f32 {
             z: self * vec.z,
         }
     }
+}
+
+impl Mul for Float3 {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self::Output {
+        Float3 {
+            x: self.x * other.x,
+            y: self.y * other.y,
+            z: self.z * other.z,
+        }
+    }    
 }
 
 impl Add for Float3 {

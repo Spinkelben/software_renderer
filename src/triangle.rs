@@ -1,8 +1,6 @@
-use rand::rand_core::le;
 
 use crate::float2::Float2;
 use crate::float3::Float3;
-use crate::math::point_on_right_side_of_line;
 use crate::obj::{FaceElement, Obj};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -26,16 +24,32 @@ impl Triangle2D {
         Triangle2D { a, b, c, color: Float3::new(1.0, 1.0, 1.0) }
     }
 
-    pub fn contains_point(&self, p: Float2) -> bool {
-        let ab = point_on_right_side_of_line(self.a, self.b, p);
-        let bc = point_on_right_side_of_line(self.b, self.c, p);
-        let ca = point_on_right_side_of_line(self.c, self.a, p);
+    pub fn contains_point(&self, p: Float2) -> (bool, Float3) {
+        let area_abp = Self::triangle_area(self.a, self.b, p);
+        let area_bcp = Self::triangle_area(self.b, self.c, p);
+        let area_cap = Self::triangle_area(self.c, self.a, p);
+        let in_triangle = area_abp >= 0.0 && area_bcp >= 0.0 && area_cap >= 0.0;
+
+        let total_area = area_abp + area_bcp + area_cap;
+        let inverse_area = 1.0 / total_area;
+        let weight = Float3::new(
+            area_bcp * inverse_area,
+            area_cap * inverse_area,
+            area_abp * inverse_area,
+        );
         
-        ab && bc && ca
+        (in_triangle && total_area > 0.0, weight)
     }
 
     pub fn set_color(&mut self, color: Float3) {
         self.color = color;
+    }
+
+    pub fn triangle_area(a : Float2, b: Float2, c: Float2) -> f32 {
+        let ac = c - a;
+        let ab = b - a;
+        let ab_perpendicular = ab.rotate_clockwise();
+        ac.dot(&ab_perpendicular) / 2.0
     }
 }
 
