@@ -5,11 +5,13 @@ mod triangle;
 mod obj;
 mod render;
 mod transform;
-use std::time::{Instant, SystemTime};
+use std::{sync::Arc, time::{Instant, SystemTime}};
 
+use pixels::Pixels;
 use triangle::Triangle2D;
 use float2::Float2;
 use float3::Float3;
+use winit::{application::ApplicationHandler, dpi::{LogicalSize, Size}, event::WindowEvent, event_loop::{self, ActiveEventLoop}, window::{Window, WindowAttributes, WindowId}};
 
 use crate::render::Model;
 
@@ -113,13 +115,59 @@ fn crazy_triangles() {
     println!("Images saved to directory: {}", out_dir);
 }
 
-fn main() {
+#[derive(Default)]
+pub struct App {
+    window: Option<Arc<winit::window::Window>>,
+    pixels: Option<Pixels<'static>>,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &event_loop::ActiveEventLoop) {
+
+        self.window = Some(Arc::new(event_loop.create_window(Window::default_attributes()
+            .with_inner_size(Size::Logical(LogicalSize {
+                width: WIDTH as f64,
+                height: HEIGHT as f64,
+            }))
+            .with_title("Software Renderer".to_string()))
+            .expect("Failed to create window")));
+
+
+        let window_size = self.window.as_ref().unwrap().inner_size();
+        let surface_texture = pixels::SurfaceTexture::new(window_size.width, window_size.height, Arc::clone(self.window.as_ref().unwrap()));
+        self.pixels = Some(Pixels::new(WIDTH as u32, HEIGHT as u32, surface_texture).unwrap())   
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        match event {
+            winit::event::WindowEvent::CloseRequested => {
+                println!("Window close requested, exiting application.");
+                event_loop.exit();
+            },
+            winit::event::WindowEvent::RedrawRequested => {
+
+                self.window.as_ref().unwrap().request_redraw();
+            }
+            _ => {}
+        }
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let event_loop = event_loop::EventLoop::new()?;
+
+    event_loop.set_control_flow(event_loop::ControlFlow::Poll);
+
+    let mut app = App::default(); 
+
+    event_loop.run_app(&mut app)?;
+
     //crazy_triangles();
     use std::env;
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: {} <obj_file_path>", args[0]);
-        return;
+        return Ok(());
     }
 
     let obj_file_path = &args[1];
@@ -180,5 +228,7 @@ fn main() {
     let total_elapsed = start.elapsed();
     println!("All frames processed in {:.2?}.", total_elapsed);
     println!("Images saved to directory: {}", out_dir);
+
+    Ok(())
 }
 
