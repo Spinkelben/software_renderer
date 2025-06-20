@@ -5,11 +5,9 @@ mod triangle;
 mod obj;
 mod render;
 mod transform;
-use std::{sync::Arc, time::{Instant, SystemTime}};
+use std::{sync::Arc, time::{Instant}};
 
 use pixels::Pixels;
-use triangle::Triangle2D;
-use float2::Float2;
 use float3::Float3;
 use winit::{application::ApplicationHandler, dpi::{LogicalSize, Size}, event::WindowEvent, event_loop::{self, ActiveEventLoop}, window::{Window, WindowId}};
 
@@ -136,9 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     model.transform.position.z = 5.0; // Move the model back in the Z direction
-    const FPS : i32 = 30;
     const VIDEO_DURATION : i32 = 30; // seconds
-    const FRAME_COUNT : i32 = FPS * VIDEO_DURATION;
     
     let rotation_list = vec![
         ((0,4), (0.04, 0.0)),
@@ -152,45 +148,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ((20, 23), (0.0, 0.04)),
         ((23, 25), (0.04, 0.0)),
         ((25, 500), (0.0, 0.1))];
-        
-        app.animation = Animation {
-            models: vec![model.clone()],
-            total_duration: VIDEO_DURATION,
-            rotations: rotation_list.clone(),
-            render_target: RenderTarget::new(WIDTH, HEIGHT),
-            start_time: None,
-        };
+    
+    app.animation = Animation {
+        models: vec![model.clone()],
+        total_duration: VIDEO_DURATION,
+        rotations: rotation_list.clone(),
+        render_target: RenderTarget::new(WIDTH, HEIGHT),
+        start_time: None,
+    };
         
     event_loop.run_app(&mut app)?;
-    return Ok(());
-
-    let start = Instant::now();
-    let out_dir = format!("out-{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
-    let mut render_target = render::RenderTarget::new(WIDTH, HEIGHT);
-    for frame in 0..FRAME_COUNT {
-        let now = Instant::now();
-        render_target.clear();
-        let (rotation_yaw, rotation_pitch) = rotation_list.iter()
-            .find(|&&((start, end), _)| {
-                frame / FPS >= start && frame / FPS < end
-            })
-            .map(|&(_, rotation)| rotation)
-            .unwrap_or((0.0, 0.0)); 
-
-        model.transform.yaw += rotation_yaw; 
-        model.transform.pitch += rotation_pitch; 
-        render::render(&model, &mut render_target);
-        bitmap::write_image_to_file(&render_target.pixels, &format!("{}/frame_{:04}.bmp", out_dir, frame)).expect("Failed to write image to file");
-        let elapsed = now.elapsed();
-        let percent_complete = (frame as f32 / FRAME_COUNT as f32) * 100.0;
-        let estimated_time = elapsed * (FRAME_COUNT - frame) as u32;
-        println!("Frame {} processed in {:.2?}. {} %. Remaining: {:.2?}", frame, elapsed, percent_complete, estimated_time);
-    }
-
-    let total_elapsed = start.elapsed();
-    println!("All frames processed in {:.2?}.", total_elapsed);
-    println!("Images saved to directory: {}", out_dir);
-
     Ok(())
 }
 
