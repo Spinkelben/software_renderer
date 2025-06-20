@@ -1,6 +1,7 @@
 use crate::float3::Float3;
 
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
     pub yaw: f32,
     pub pitch: f32,

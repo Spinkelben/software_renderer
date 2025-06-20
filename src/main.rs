@@ -13,7 +13,7 @@ use float2::Float2;
 use float3::Float3;
 use winit::{application::ApplicationHandler, dpi::{LogicalSize, Size}, event::WindowEvent, event_loop::{self, ActiveEventLoop}, window::{Window, WindowAttributes, WindowId}};
 
-use crate::render::Model;
+use crate::{obj::Obj, render::{Model, RenderTarget}};
 
 const HEIGHT : usize = 512;
 const WIDTH : usize = 512;
@@ -119,6 +119,17 @@ fn crazy_triangles() {
 pub struct App {
     window: Option<Arc<winit::window::Window>>,
     pixels: Option<Pixels<'static>>,
+    animation: Animation,
+}
+
+#[derive(Default)]
+struct Animation {
+    models: Vec<Model>,
+    current_frame: usize,
+    total_frames: usize,
+    rotations: Vec<((i32, i32), (f32, f32))>,
+    fps: i32,
+    render_target: RenderTarget,
 }
 
 impl ApplicationHandler for App {
@@ -145,7 +156,24 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             },
             winit::event::WindowEvent::RedrawRequested => {
+                let animation = &mut self.animation;
+                animation.render_target.clear();
+                for model in animation.models.iter() {
+                    render::render(model, &mut animation.render_target);
+                }
 
+                let frame = self.pixels.as_mut().unwrap().frame_mut();
+                for (y, row) in animation.render_target.pixels.iter().enumerate() {
+                    for (x, pixel) in row.iter().enumerate() {
+                        let index = (y * WIDTH + x) * 4;
+                        frame[index] = (pixel.r() * 255.0) as u8;
+                        frame[index + 1] = (pixel.g() * 255.0) as u8;
+                        frame[index + 2] = (pixel.b() * 255.0) as u8;
+                        frame[index + 3] = 255; // Alpha channel
+                    }
+                }
+
+                self.pixels.as_mut().unwrap().render().expect("Failed to render pixels");
                 self.window.as_ref().unwrap().request_redraw();
             }
             _ => {}
@@ -154,14 +182,6 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let event_loop = event_loop::EventLoop::new()?;
-
-    event_loop.set_control_flow(event_loop::ControlFlow::Poll);
-
-    let mut app = App::default(); 
-
-    event_loop.run_app(&mut app)?;
-
     //crazy_triangles();
     use std::env;
     let args: Vec<String> = env::args().collect();
@@ -170,11 +190,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    let event_loop = event_loop::EventLoop::new()?;
+    event_loop.set_control_flow(event_loop::ControlFlow::Poll);
+    let mut app = App::default(); 
+    
+    
     let obj_file_path = &args[1];
     let obj = obj::Obj::read_from_file(obj_file_path).expect("Failed to read OBJ file");
     println!("OBJ file loaded successfully with {} vertices, {} texture coordinates, {} normals, and {} faces.", 
-             obj.vertices.len(), obj.texture_coordinates.len(), obj.normals.len(), obj.faces.len());
-
+    obj.vertices.len(), obj.texture_coordinates.len(), obj.normals.len(), obj.faces.len());
+    
     let mut model = Model::new();
     for face in obj.faces.iter() {
         let mut t = triangle::Triangle3D::create_triangles_from_face(&obj, face);
@@ -183,16 +208,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             model.add_triangle(*triangle);
         }
     }
-
+    
     model.transform.position.z = 5.0; // Move the model back in the Z direction
-
-    let out_dir = format!("out-{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
-    let mut render_target = render::RenderTarget::new(WIDTH, HEIGHT);
     const FPS : i32 = 30;
     const VIDEO_DURATION : i32 = 30; // seconds
     const FRAME_COUNT : i32 = FPS * VIDEO_DURATION;
-    let start = Instant::now();
-
+    
     let rotation_list = vec![
         ((0,4), (0.04, 0.0)),
         ((4,5), (0.0, 0.0)),
@@ -205,6 +226,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ((20, 23), (0.0, 0.04)),
         ((23, 25), (0.04, 0.0)),
         ((25, 500), (0.0, 0.1))];
+        
+        app.animation = Animation {
+            models: vec![model.clone()],
+            current_frame: 0,
+            total_frames: FRAME_COUNT as usize,
+            rotations: rotation_list.clone(),
+            fps: FPS,
+            render_target: RenderTarget::new(WIDTH, HEIGHT),
+        };
+        
+    event_loop.run_app(&mut app)?;
+    return Ok(());
+
+    let start = Instant::now();
+    let out_dir = format!("out-{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
+    let mut render_target = render::RenderTarget::new(WIDTH, HEIGHT);
     for frame in 0..FRAME_COUNT {
         let now = Instant::now();
         render_target.clear();

@@ -1,6 +1,6 @@
 use crate::{float2::Float2, float3::{Float3}, transform::{Transform}, triangle::{Triangle2D, Triangle3D}};
 
-
+#[derive(Default)]
 pub struct RenderTarget {
     pub width: usize,
     pub height: usize,
@@ -42,6 +42,7 @@ impl RenderTarget {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Model {
     pub triangles: Vec<Triangle3D>,
     pub transform: Transform,
