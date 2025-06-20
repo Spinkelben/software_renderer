@@ -26,6 +26,7 @@ pub struct Obj {
     pub texture_coordinates: Vec<Float3>,
     pub normals: Vec<Float3>,
     pub faces: Vec<FaceElement>,
+    pub name: String, 
 }
 
 impl Obj {
@@ -35,6 +36,7 @@ impl Obj {
             texture_coordinates: Vec::new(),
             normals: Vec::new(),
             faces: Vec::new(),
+            name: String::new(), 
         }
     }
 
@@ -90,7 +92,9 @@ impl Obj {
             let parts: Vec<&str> = line.split_whitespace().collect();
             match parts[0] {
                 "o" => {
-                    // Object name, can be ignored for now
+                    if parts.len() > 1 {
+                        result.name = parts[1].to_string();
+                    } 
                 },
                 "v" => {
                     let position = Float3::new(
