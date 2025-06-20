@@ -13,9 +13,6 @@ use winit::{application::ApplicationHandler, dpi::{LogicalSize, Size}, event::Wi
 
 use crate::{render::{Model, RenderTarget}};
 
-const HEIGHT : usize = 512;
-const WIDTH : usize = 512;
-
 #[derive(Default)]
 pub struct App {
     window: Option<Arc<winit::window::Window>>,
@@ -35,11 +32,12 @@ struct Animation {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &event_loop::ActiveEventLoop) {
-
+        let width = self.animation.render_target.width;
+        let height = self.animation.render_target.height;
         self.window = Some(Arc::new(event_loop.create_window(Window::default_attributes()
             .with_inner_size(Size::Logical(LogicalSize {
-                width: WIDTH as f64,
-                height: HEIGHT as f64,
+                width: width as f64,
+                height: height as f64,
             }))
             .with_title("Software Renderer".to_string()))
             .expect("Failed to create window")));
@@ -47,7 +45,7 @@ impl ApplicationHandler for App {
 
         let window_size = self.window.as_ref().unwrap().inner_size();
         let surface_texture = pixels::SurfaceTexture::new(window_size.width, window_size.height, Arc::clone(self.window.as_ref().unwrap()));
-        self.pixels = Some(Pixels::new(WIDTH as u32, HEIGHT as u32, surface_texture).unwrap());
+        self.pixels = Some(Pixels::new(width as u32, height as u32, surface_texture).unwrap());
         self.animation.start_time = Some(Instant::now());
         self.last_frame = Some(Instant::now());
     }
@@ -88,9 +86,10 @@ impl ApplicationHandler for App {
 
                 // Write the pixels to the pixel buffer used by the window
                 let frame = self.pixels.as_mut().unwrap().frame_mut();
+                let width = animation.render_target.width as usize;
                 for (y, row) in animation.render_target.pixels.iter().enumerate() {
                     for (x, pixel) in row.iter().enumerate() {
-                        let index = (y * WIDTH + x) * 4;
+                        let index = (y * width + x) * 4;
                         frame[index] = (pixel.r() * 255.0) as u8;
                         frame[index + 1] = (pixel.g() * 255.0) as u8;
                         frame[index + 2] = (pixel.b() * 255.0) as u8;
@@ -100,7 +99,32 @@ impl ApplicationHandler for App {
 
                 self.pixels.as_mut().unwrap().render().expect("Failed to render pixels");
                 self.window.as_ref().unwrap().request_redraw();
-            }
+            },
+            winit::event::WindowEvent::Resized(size) => {
+                if let Some(pixels) = &mut self.pixels {
+                    if size.width == 0 || size.height == 0 {
+                        return;
+                    }
+
+                    if let Err(err) = pixels.resize_surface(size.width as u32, size.height as u32) {
+                        event_loop.exit();
+                        eprintln!("Failed to resize surface: {}", err);
+                        return;
+                    } 
+
+                    if let Err(err) = pixels.resize_buffer(size.width, size.height) {
+                        event_loop.exit();
+                        eprintln!("Failed to resize buffer: {}", err);
+                        return;
+                    }
+                }
+
+                let target = &mut self.animation.render_target;
+                target.width = size.width as usize;
+                target.height = size.height as usize;
+                target.pixels = vec![vec![Float3::zero(); target.width]; target.height];
+                target.depth_buffer = vec![vec![f32::INFINITY; target.width]; target.height];
+            },
             _ => {}
         }
     }
@@ -153,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         models: vec![model.clone()],
         total_duration: VIDEO_DURATION,
         rotations: rotation_list.clone(),
-        render_target: RenderTarget::new(WIDTH, HEIGHT),
+        render_target: RenderTarget::new(512, 512),
         start_time: None,
     };
         
