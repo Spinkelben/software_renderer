@@ -39,7 +39,8 @@ impl ApplicationHandler for App {
                 width: width as f64,
                 height: height as f64,
             }))
-            .with_title("Software Renderer".to_string()))
+            .with_title("Software Renderer".to_string())
+            .with_window_icon(None))
             .expect("Failed to create window")));
 
 
