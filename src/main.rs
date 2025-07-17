@@ -5,6 +5,7 @@ mod triangle;
 mod obj;
 mod render;
 mod transform;
+mod asset;
 use std::{sync::Arc, time::{Instant}};
 
 use pixels::Pixels;
@@ -135,29 +136,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::env;
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: {} <obj_file_path>", args[0]);
+        eprintln!("Usage: {} model number", args[0]);
         return Ok(());
     }
 
     let event_loop = event_loop::EventLoop::new()?;
     event_loop.set_control_flow(event_loop::ControlFlow::Poll);
-    let mut app = App::default(); 
-    
-    
-    let obj_file_path = &args[1];
-    let obj = obj::Obj::read_from_file(obj_file_path).expect("Failed to read OBJ file");
-    println!("OBJ file loaded successfully with {} vertices, {} texture coordinates, {} normals, and {} faces.", 
-    obj.vertices.len(), obj.texture_coordinates.len(), obj.normals.len(), obj.faces.len());
-    
-    let mut model = Model::new();
-    for face in obj.faces.iter() {
-        let mut t = triangle::Triangle3D::create_triangles_from_face(&obj, face);
-        for triangle in t.iter_mut() {
-            triangle.set_color(Float3::random());
-            model.add_triangle(*triangle);
-        }
+    let mut app = App::default();
+
+    let model_number: usize = args[1].parse().unwrap_or(0);
+
+    let assets = asset::AssetLoader::new();
+    let models = assets.get_models();
+    if models.len() == 0 {
+        return Err("No models loaded".into());
     }
-    
+
+    if model_number >= models.len() {
+        eprintln!("Model number {} is out of range. Available models: 0 to {}", model_number, models.len() - 1);
+        return Ok(());
+    }
+
+    let mut model = models[model_number].clone();
     model.transform.position.z = 5.0; // Move the model back in the Z direction
     const VIDEO_DURATION : i32 = 30; // seconds
     

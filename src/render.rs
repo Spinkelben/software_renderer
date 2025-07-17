@@ -60,6 +60,18 @@ impl Model {
         self.triangles.push(triangle);
         self.triangles.len() - 1 // Return the index of the new triangle
     }
+
+    pub fn from(obj: crate::obj::Obj) -> Self {
+        let mut model = Model::new();
+        for face in obj.faces.iter() {
+            let mut triangles = Triangle3D::create_triangles_from_face(&obj, face);
+            for triangle in triangles.iter_mut() {
+                triangle.set_color(Float3::random());
+                model.add_triangle(*triangle);
+            }
+        }
+        model
+    }
 }
 
 pub fn render(model: &Model, target: &mut RenderTarget) {
