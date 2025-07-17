@@ -6,6 +6,7 @@ mod obj;
 mod render;
 mod transform;
 mod asset;
+mod scene;
 use std::{sync::Arc, time::{Instant}};
 
 use pixels::Pixels;
@@ -29,6 +30,7 @@ struct Animation {
     rotations: Vec<((i32, i32), (f32, f32))>,
     render_target: RenderTarget,
     start_time: Option<Instant>,
+    assets: asset::AssetLoader,
 }
 
 impl ApplicationHandler for App {
@@ -180,6 +182,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rotations: rotation_list.clone(),
         render_target: RenderTarget::new(512, 512),
         start_time: None,
+        assets: assets,
     };
         
     event_loop.run_app(&mut app)?;

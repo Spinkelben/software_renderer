@@ -1,6 +1,7 @@
 use crate::render::Model;
 use crate::obj::Obj;
 
+#[derive(Default)]
 pub struct AssetLoader {
     models: Vec<Model>,
 }
